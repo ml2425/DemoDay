@@ -1,35 +1,45 @@
 """
 Negation detection module.
 Filters out negated mentions before expensive LLM calls.
+
+Policy: Drop negated mentions (v1.2)
+Sentences containing negation cues (e.g., "no evidence of", "ruled out") are
+filtered out before entity extraction to prevent false positive extractions.
+This conservative approach ensures only affirmative statements enter the KG.
 """
 
-from typing import List, Dict, Any
+from typing import List
+import sqlite3
+
+from database.negation_utils import detect_negations, write_negations
 
 
-def detect_negations(sentences: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+class NegationNode:
     """
-    Detect negated mentions in sentences using pattern matching.
+    Negation detection and filtering node.
     
-    Args:
-        sentences: List of sentence dictionaries
-        
-    Returns:
-        List of negation dictionaries with 'sent_idx', 'span_text', 'cue_text'
+    Implements v1.2 policy: detects negated mentions using regex patterns
+    and filters them out before expensive LLM canonicalization calls.
     """
-    # Stub: return empty list
-    return []
-
-
-def is_negated(text: str) -> bool:
-    """
-    Check if a text span contains negation cues.
     
-    Args:
-        text: Text to check
+    def filter(self, doc_id: int, sentences: List[str], conn: sqlite3.Connection) -> List[str]:
+        """
+        Filter out negated sentences and log them to database.
         
-    Returns:
-        True if negated, False otherwise
-    """
-    # Stub: return False
-    return False
+        Args:
+            doc_id: Document ID
+            sentences: List of sentence strings to filter
+            conn: Database connection
+            
+        Returns:
+            List of kept sentences (negated sentences removed)
+        """
+        # Detect negations
+        kept_sentences, negations = detect_negations(sentences)
+        
+        # Write negations to database for logging
+        if negations:
+            write_negations(conn, doc_id, negations)
+        
+        return kept_sentences
 

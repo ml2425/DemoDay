@@ -39,27 +39,18 @@ PDF / PubMed → Negation Detect → NER → Canonicaliser (LLM)
 | **Gradio Review UI** | Allows doctor approval, edit, and feedback loop. |
 
 ---
-
-## 🧩 Configuration Snapshot
-
-```yaml
-ncbi:
-  email: "your@example.com"
-  api_key: "${NCBI_API_KEY}"
-  rate_limit_rps: 6       # >3 rps requires API key
-llm:
-  canonicalizer_model: "gpt-4o-mini"
-  verifier_model: "gpt-4o-mini"
-  mcq_generator_model: "gpt-4o"
-features:
-  extract_microbe: false
-  dry_run: false
-
----
-
-## Data Invariants
-PRAGMA foreign_keys = ON;
-PRAGMA journal_mode = WAL;
+| Phase   | Focus                                             | Output                                              | Purpose                                 |
+| ------- | ------------------------------------------------- | --------------------------------------------------- | --------------------------------------- |
+| ✅ 1–3   | Repo, env, DB schema, skeleton, tests             | ✅ All passing                                       | Foundation                              |
+| ✅ 4a–4b | Ingestion (PDF + PubMed)                          | ✅ Working                                           | Data acquisition                        |
+| ✅ 5     | Negation detection                                | ✅ Working                                           | Filter false/negated text               |
+| ✅ 6     | Canonicaliser (LLM+cache)                         | ✅ Working                                           | Entity normalization                    |
+| ✅ 7     | Relation extraction + verifier                    | ✅ Working                                           | Core triple generation                  |
+| **8**   | Provenance & audit trail (prompts, evidence join) | Adds `prompt_id` links, evidence summarizer         | Trace LLM and document origin           |
+| **9**   | MCQ generator (LLM-assisted + validation)         | Uses triples + evidence to create 5-option MCQs     | Educational output stage                |
+| **10**  | Human-in-loop review UI (Gradio or Streamlit)     | Launches review dashboard with LangGraph interrupts | Enable manual curation                  |
+| **11**  | LangGraph orchestration (Supervisor + Nodes)      | `graph.py` workflow                                 | End-to-end run from document → MCQ      |
+| **12**  | Evaluation & reporting                            | Test coverage, DB metrics, citation completeness    | Provenance assurance and output summary |
 
 ---
 
