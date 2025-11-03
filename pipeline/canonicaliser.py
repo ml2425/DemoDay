@@ -55,7 +55,7 @@ class CanonicaliserNode:
         
         return result
     
-    def process_spans(self, doc_id: int, sent_idx: int, spans: List[Tuple[int, int, str]]) -> List[int]:
+    def process_spans(self, doc_id: int, sent_idx: int, spans: List[Tuple[int, int, str]], sentence: str = "") -> List[int]:
         """
         Process entity spans: canonicalize, upsert concepts, insert entities.
         
@@ -63,12 +63,12 @@ class CanonicaliserNode:
             doc_id: Document ID
             sent_idx: Sentence index
             spans: List of (char_start, char_end, span_text) tuples
+            sentence: Full sentence text for context (optional)
             
         Returns:
             List of entity_id values for inserted entities
         """
         entity_ids = []
-        sentence = ""  # Would need full sentence context in real implementation
         
         for char_start, char_end, span_text in spans:
             # Canonicalize

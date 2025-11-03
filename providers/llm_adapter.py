@@ -40,8 +40,16 @@ def _heuristic_canonicalize(span: str, sentence: str) -> Dict[str, Any]:
                 "confidence": 0.6
             }
     
-    # DRUG: common drug suffixes
-    if re.search(r'(?:pril|mab|azole|mycin|olol|prazole|dipine)$', span_lower, re.IGNORECASE):
+    # DISORDER: common disorder terms
+    if re.search(r'\b(?:diabetes|migraine|hypertension|pneumonia|meningitis|epilepsy)\b', span_lower):
+        return {
+            "canonical_name": span.strip(),
+            "semantic_category": "DISORDER",
+            "confidence": 0.5
+        }
+    
+    # DRUG: common drug suffixes and names
+    if re.search(r'(?:pril|mab|azole|mycin|olol|prazole|dipine|formin|in|ol|ide)$', span_lower, re.IGNORECASE):
         return {
             "canonical_name": span.strip(),
             "semantic_category": "DRUG",
