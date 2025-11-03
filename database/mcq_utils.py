@@ -166,3 +166,136 @@ def insert_mcq(
     conn.commit()
     return cursor.lastrowid
 
+
+def list_mcqs(conn: sqlite3.Connection, status: str = "pending", limit: int = 20) -> List[Dict]:
+    """
+    List MCQs by status.
+    
+    Args:
+        conn: Database connection
+        status: Status filter (default: "pending")
+        limit: Maximum number of MCQs to return
+        
+    Returns:
+        List of MCQ dictionaries with all fields
+    """
+    cursor = conn.execute(
+        """
+        SELECT mcq_id, triple_id, stem, options_json, explanation, citations_json,
+               topic, difficulty, status, human_feedback
+        FROM mcqs
+        WHERE status = ?
+        ORDER BY mcq_id
+        LIMIT ?
+        """,
+        (status, limit)
+    )
+    
+    rows = cursor.fetchall()
+    mcqs = []
+    for row in rows:
+        mcq = {
+            "mcq_id": row[0],
+            "triple_id": row[1],
+            "stem": row[2],
+            "options_json": row[3],
+            "explanation": row[4],
+            "citations_json": row[5],
+            "topic": row[6],
+            "difficulty": row[7],
+            "status": row[8],
+            "human_feedback": row[9]
+        }
+        # Parse JSON fields
+        if mcq["options_json"]:
+            mcq["options"] = json.loads(mcq["options_json"])
+        else:
+            mcq["options"] = []
+        
+        if mcq["citations_json"]:
+            mcq["citations"] = json.loads(mcq["citations_json"])
+        else:
+            mcq["citations"] = []
+        
+        mcqs.append(mcq)
+    
+    return mcqs
+
+
+def get_mcq(conn: sqlite3.Connection, mcq_id: int) -> Optional[Dict]:
+    """
+    Get a single MCQ by ID.
+    
+    Args:
+        conn: Database connection
+        mcq_id: MCQ ID
+        
+    Returns:
+        MCQ dictionary or None if not found
+    """
+    cursor = conn.execute(
+        """
+        SELECT mcq_id, triple_id, stem, options_json, explanation, citations_json,
+               topic, difficulty, status, human_feedback
+        FROM mcqs
+        WHERE mcq_id = ?
+        """,
+        (mcq_id,)
+    )
+    
+    row = cursor.fetchone()
+    if not row:
+        return None
+    
+    mcq = {
+        "mcq_id": row[0],
+        "triple_id": row[1],
+        "stem": row[2],
+        "options_json": row[3],
+        "explanation": row[4],
+        "citations_json": row[5],
+        "topic": row[6],
+        "difficulty": row[7],
+        "status": row[8],
+        "human_feedback": row[9]
+    }
+    
+    # Parse JSON fields
+    if mcq["options_json"]:
+        mcq["options"] = json.loads(mcq["options_json"])
+    else:
+        mcq["options"] = []
+    
+    if mcq["citations_json"]:
+        mcq["citations"] = json.loads(mcq["citations_json"])
+    else:
+        mcq["citations"] = []
+    
+    return mcq
+
+
+def update_mcq_status(
+    conn: sqlite3.Connection,
+    mcq_id: int,
+    status: str,
+    feedback: str = ""
+) -> None:
+    """
+    Update MCQ status and optionally feedback.
+    
+    Args:
+        conn: Database connection
+        mcq_id: MCQ ID
+        status: New status (e.g., "approved", "rejected")
+        feedback: Optional feedback text
+    """
+    conn.execute(
+        """
+        UPDATE mcqs
+        SET status = ?, human_feedback = ?
+        WHERE mcq_id = ?
+        """,
+        (status, feedback, mcq_id)
+    )
+    conn.commit()
+
