@@ -39,22 +39,46 @@ PDF / PubMed → Negation Detect → NER → Canonicaliser (LLM)
 | **Gradio Review UI** | Allows doctor approval, edit, and feedback loop. |
 
 ---
-| Phase   | Focus                                             | Output                                              | Purpose                                 |
-| ------- | ------------------------------------------------- | --------------------------------------------------- | --------------------------------------- |
-| ✅ 1–3   | Repo, env, DB schema, skeleton, tests             | ✅ All passing                                       | Foundation                              |
-| ✅ 4a–4b | Ingestion (PDF + PubMed)                          | ✅ Working                                           | Data acquisition                        |
-| ✅ 5     | Negation detection                                | ✅ Working                                           | Filter false/negated text               |
-| ✅ 6     | Canonicaliser (LLM+cache)                         | ✅ Working                                           | Entity normalization                    |
-| ✅ 7     | Relation extraction + verifier                    | ✅ Working                                           | Core triple generation                  |
-| **8**   | Provenance & audit trail (prompts, evidence join) | Adds `prompt_id` links, evidence summarizer         | Trace LLM and document origin           |
-| **9**   | MCQ generator (LLM-assisted + validation)         | Uses triples + evidence to create 5-option MCQs     | Educational output stage                |
-| **10**  | Human-in-loop review UI (Gradio or Streamlit)     | Launches review dashboard with LangGraph interrupts | Enable manual curation                  |
-| **11**  | LangGraph orchestration (Supervisor + Nodes)      | `graph.py` workflow                                 | End-to-end run from document → MCQ      |
-| **12**  | Evaluation & reporting                            | Test coverage, DB metrics, citation completeness    | Provenance assurance and output summary |
+DemoDay: Provenance-First MCQ Generation Pipeline
+🎯 Objective
 
----
+DemoDay is a multi-agent, provenance-first pipeline that transforms verified biomedical literature (e.g., PubMed or local PDFs) into fact-checked multiple-choice questions (MCQs) for medical specialist training.
+Each generated MCQ is traceable to its evidence sentences, ensuring accuracy and reducing hallucination risk.
 
-## Reference
+⚙️ End-to-End Workflow
+Phase	Module	Purpose	Key Output
+1–3 Environment & Schema	setup/, database/schema.sql	Configure environment, define relational schema, and scaffold test-verified code skeleton	Working repo + SQLite schema
+4 Ingestion	pipeline/ingest.py	Import PDFs or PubMed abstracts, compute SHA-256 fingerprints, and register in docs table	Normalized document text
+5 Negation Filter	pipeline/negation.py	Detect negated statements (“no evidence of…”) and exclude them from downstream extraction; log cues in negations	Cleaned, factual sentences
+6 Canonicalisation	pipeline/canonicaliser.py, providers/llm_adapter.py	Map entity spans to canonical medical concepts (heuristic/LLM adapter) and insert into concepts + entities	Unified biomedical entities
+7 Relation Extraction & Verification	pipeline/relations.py, pipeline/verifier.py	Identify candidate relations (e.g., TREATS, HAS_FINDING) and verify entailment heuristically	Verified triples → triples table
+8 Provenance & Audit	database/provenance_utils.py, utils/text_window.py	Record every LLM/prompt call and attach multi-sentence evidence windows	Traceable provenance links
+9 MCQ Generation	pipeline/mcq_generator.py, database/mcq_utils.py	Convert verified triples + evidence into 5-option MCQs with citations; validate format	Validated MCQs → mcqs table
+10 Human Review Loop	pipeline/ui_gradio.py, scripts/review_cli.py	Review pending MCQs via Gradio dashboard or CLI; approve/reject + feedback	Curated MCQs with reviewer notes
+11 LangGraph-Lite Orchestrator	pipeline/graph.py	Full document pipeline orchestration: Ingest → Negation → Canonicaliser → Relations → Verification → MCQ	Automated end-to-end run
+🧠 Data Provenance Guarantee
 
-All technical details and design rationale are defined in plan_v2.1.txt
- — the authoritative architecture guide for DemoDay.
+Every triple and MCQ links back to:
+
+Document source (docs table, pmid/doi/url)
+
+Evidence window (evidence table → exact sentences)
+
+Prompt trace (prompts table → hash of generation prompt)
+
+This ensures reproducibility and auditability for every generated question.
+
+🖥️ User Interaction
+
+Generate MCQs
+
+python -m pipeline.graph   # or: Orchestrator.run_doc(doc_id, text)
+
+
+Review / Curate MCQs
+
+python scripts/review_cli.py --list
+python -m pipeline.ui_gradio  # Launch browser dashboard
+
+
+Inspect / Export results directly from kg.sqlite.
