@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.env
+.env.*
+
+# Configuration files with API keys
+configs/config.yaml
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build / reports
+dist/
+build/
+*.egg-info/
+htmlcov/
+.coverage*
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

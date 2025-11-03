@@ -1,0 +1,37 @@
+[project]
+name = "demoday"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=0.30.0",
+    "biopython>=1.83",
+    "cohere>=5.5.8",
+    "faker>=25.3.0",
+    "gradio>=4.38.0",
+    "hypothesis>=6.103.0",
+    "langchain>=0.2.0",
+    "langgraph>=0.1.0",
+    "langsmith>=0.1.15",
+    "lxml>=5.2.1",
+    "medspacy>=1.2.0",
+    "numpy>=1.26.0",
+    "openai>=1.42.0",
+    "pandas>=2.2.2",
+    "pydantic>=2.7.1",
+    "pypdf>=4.2.0",
+    "pytest>=8.2.0",
+    "pytest-asyncio>=0.23.7",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.12.0",
+    "python-dotenv>=1.0.1",
+    "requests>=2.31.0",
+    "scispacy>=0.5.3",
+    "spacy>=3.7.0",
+    "sqlite-utils>=3.37",
+    "tavily-python>=0.4.0",
+    "tenacity>=8.3.0",
+    "tqdm>=4.66.2",
+    "xxhash>=3.5.0",
+]
