@@ -1,0 +1,42 @@
+# Schema validation rules for entity types and relations
+
+# Entity types
+entity_types:
+  - DISORDER
+  - FINDING
+  - PROCEDURE
+  - DRUG
+  - INVESTIGATION
+  - MICROBE
+
+# Relations with domain/range constraints
+relations:
+  - id: CAUSES
+    domain: [MICROBE, DISORDER, DRUG]
+    range: [DISORDER, FINDING]
+    enabled: true
+  
+  - id: TREATS
+    domain: [DRUG, PROCEDURE]
+    range: [DISORDER]
+    enabled: true
+  
+  - id: SENSITIVE_TO
+    domain: [MICROBE]
+    range: [DRUG]
+    enabled: false  # Feature-flagged
+
+# Section quality tiers
+section_quality:
+  high: [RESULTS, METHODS]
+  low: [DISCUSSION, CONCLUSION]
+
+# MCQ validation rules
+mcq_validation:
+  num_options: 5
+  require_citation: true
+  checks:
+    type_compatibility: true
+    evidence_leakage: true
+    uniqueness: true
+

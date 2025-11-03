@@ -19,6 +19,9 @@ configs/config.yaml
 *.log
 logs/
 
+# Test files
+quick_test.py
+
 # IDE
 .vscode/
 .idea/
