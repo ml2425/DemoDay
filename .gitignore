@@ -22,6 +22,9 @@ logs/
 # Test files
 quick_test.py
 
+# Progress tracking
+progress.txt
+
 # IDE
 .vscode/
 .idea/
