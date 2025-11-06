@@ -14,7 +14,7 @@ from database.db_utils import connect
 from database.mcq_utils import list_mcqs, get_mcq, update_mcq_status
 
 
-def launch_review_ui(db_path: str = "kg.sqlite", page_size: int = 10):
+def launch_review_ui(db_path: str = "database/kg.sqlite", page_size: int = 10):
     """
     Launch Gradio review UI for pending MCQs.
     

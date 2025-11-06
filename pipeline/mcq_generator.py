@@ -6,6 +6,7 @@ Generates multiple-choice questions from verified triples with citations.
 import json
 import random
 import sqlite3
+from pathlib import Path
 from typing import Dict, Any, Optional
 
 from database.mcq_utils import (
@@ -175,23 +176,67 @@ class MCQGeneratorNode:
         # Build explanation with citations
         first_evidence = evidence_list[0]
         citation_token = None
+        source_kind = first_evidence.get("source_kind", "")
         
-        if first_evidence.get("pmid"):
-            citation_token = f"PMID:{first_evidence['pmid']}"
-        elif first_evidence.get("doi"):
-            citation_token = f"DOI:{first_evidence['doi']}"
+        if source_kind == "LOCAL_PDF":
+            # Extract original filename from url (remove UUID prefix)
+            url = first_evidence.get("url", "")
+            if url:
+                # url format: "samples/{8hex}_{filename}.pdf"
+                # Split on first underscore to separate UUID from original filename
+                path_obj = Path(url)
+                filename = path_obj.name
+                if "_" in filename:
+                    # Split on first underscore: [UUID, original_filename]
+                    original_filename = filename.split("_", 1)[1]
+                else:
+                    original_filename = filename
+                citation_token = f"LOCAL_PDF: samples/{original_filename}"
+            else:
+                citation_token = "LOCAL_PDF: unknown"
+        elif source_kind == "PUBMED_ABSTRACT":
+            if first_evidence.get("pmid"):
+                citation_token = f"PMID:{first_evidence['pmid']}"
+            elif first_evidence.get("doi"):
+                citation_token = f"DOI:{first_evidence['doi']}"
+            else:
+                citation_token = "PMID:00000000"
         else:
-            citation_token = "PMID:00000000"
+            # Fallback for other source kinds or missing source_kind
+            if first_evidence.get("pmid"):
+                citation_token = f"PMID:{first_evidence['pmid']}"
+            elif first_evidence.get("doi"):
+                citation_token = f"DOI:{first_evidence['doi']}"
+            else:
+                citation_token = "PMID:00000000"
         
         explanation = f"This is supported by evidence. {citation_token}"
         
-        # Build citations list
+        # Build citations list (similar logic for each evidence item)
         citations = []
         for ev in evidence_list:
-            if ev.get("pmid"):
-                citations.append({"type": "pmid", "value": ev["pmid"]})
-            elif ev.get("doi"):
-                citations.append({"type": "doi", "value": ev["doi"]})
+            ev_source_kind = ev.get("source_kind", "")
+            if ev_source_kind == "LOCAL_PDF":
+                url = ev.get("url", "")
+                if url:
+                    path_obj = Path(url)
+                    filename = path_obj.name
+                    if "_" in filename:
+                        original_filename = filename.split("_", 1)[1]
+                    else:
+                        original_filename = filename
+                    citations.append({"type": "local_pdf", "value": f"samples/{original_filename}"})
+            elif ev_source_kind == "PUBMED_ABSTRACT":
+                if ev.get("pmid"):
+                    citations.append({"type": "pmid", "value": ev["pmid"]})
+                elif ev.get("doi"):
+                    citations.append({"type": "doi", "value": ev["doi"]})
+            else:
+                # Fallback for other source kinds
+                if ev.get("pmid"):
+                    citations.append({"type": "pmid", "value": ev["pmid"]})
+                elif ev.get("doi"):
+                    citations.append({"type": "doi", "value": ev["doi"]})
         
         if not citations:
             citations.append({"type": "pmid", "value": "00000000"})

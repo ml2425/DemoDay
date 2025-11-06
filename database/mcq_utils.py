@@ -18,12 +18,12 @@ def get_evidence_for_triple(conn: sqlite3.Connection, triple_id: int) -> List[Di
         triple_id: Triple ID
         
     Returns:
-        List of dicts with keys: {doc_id, pmid, doi, sentence_text}
+        List of dicts with keys: {doc_id, source_kind, pmid, doi, url, sentence_text}
         Ordered by evidence_id
     """
     cursor = conn.execute(
         """
-        SELECT e.doc_id, d.pmid, d.doi, e.sentence_text
+        SELECT e.doc_id, d.source_kind, d.pmid, d.doi, d.url, e.sentence_text
         FROM evidence e
         JOIN docs d ON e.doc_id = d.doc_id
         WHERE e.triple_id = ?
@@ -36,9 +36,11 @@ def get_evidence_for_triple(conn: sqlite3.Connection, triple_id: int) -> List[Di
     return [
         {
             "doc_id": row[0],
-            "pmid": row[1],
-            "doi": row[2],
-            "sentence_text": row[3]
+            "source_kind": row[1],
+            "pmid": row[2],
+            "doi": row[3],
+            "url": row[4],
+            "sentence_text": row[5]
         }
         for row in rows
     ]

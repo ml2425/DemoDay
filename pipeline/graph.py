@@ -38,7 +38,7 @@ class Orchestrator:
         # Initialize nodes
         self.negation_node = NegationNode()
         self.canonicaliser = CanonicaliserNode(conn)
-        self.relation_extractor = RelationExtractor()
+        self.relation_extractor = RelationExtractor(conn=conn)
         self.verifier = RelationVerifierNode(conn)
         self.mcq_generator = MCQGeneratorNode(conn)
         
@@ -85,6 +85,10 @@ class Orchestrator:
         created_triple_ids = []
         triples_created = 0
         
+        # Calculate total sentences to process (for progress logging)
+        total_sentences = len([s for s in sentence_dicts if s["text"] in kept_sentences])
+        sentence_count = 0
+        
         # Process each kept sentence
         for sent_dict in sentence_dicts:
             sent_text = sent_dict["text"]
@@ -93,6 +97,9 @@ class Orchestrator:
             # Skip if sentence was filtered by negation
             if sent_text not in kept_sentences:
                 continue
+            
+            sentence_count += 1
+            print(f"  [{sentence_count}/{total_sentences}] Processing sentence {sent_idx}: {sent_text[:60]}...", flush=True)
             
             try:
                 # Find spans
@@ -135,11 +142,19 @@ class Orchestrator:
                 
                 # Extract relation candidates
                 candidates = self.relation_extractor.candidates(sent_text, entities_for_sentence)
+                if candidates:
+                    print(f"      -> Found {len(candidates)} relation candidates", flush=True)
                 if not candidates:
                     continue
                 
                 # Verify and insert triples
-                for head_name, rel_id, tail_name in candidates:
+                for rel in candidates:
+                    # Extract relation data from Dict format
+                    head_name = rel.get("head", "")
+                    rel_id = rel.get("relation", "")
+                    tail_name = rel.get("tail", "")
+                    llm_confidence = rel.get("confidence", 0.75)  # LLM extractor confidence
+                    
                     # Check verify call budget
                     if self.verify_call_count >= self.max_verify_calls:
                         continue
@@ -168,6 +183,8 @@ class Orchestrator:
                             ensure_relation(self.conn, rel_id, rel_id.lower(), "", "")
                             
                             # Insert triple
+                            # Use verifier confidence (more reliable for entailment), 
+                            # but could use min(llm_confidence, verifier_confidence) for tighter bounds
                             triple_id = insert_triple(
                                 self.conn,
                                 head_entity=head_entity_id,
@@ -192,11 +209,13 @@ class Orchestrator:
                             triples_created += 1
                     
                     except Exception as e:
-                        # Skip gracefully on error
+                        # Log error but continue
+                        print(f"      [ERROR] Triple verification failed for sentence {sent_idx}: {e}", flush=True)
                         continue
             
             except Exception as e:
-                # Skip gracefully on error
+                # Log error but continue
+                print(f"      [ERROR] Sentence {sent_idx} failed: {e}", flush=True)
                 continue
         
         # Generate MCQs for new triples (ignore failures)
@@ -216,7 +235,7 @@ class Orchestrator:
         }
 
 
-def build_graph(config: Optional[Dict[str, Any]] = None, db_path: str = "kg.sqlite") -> Orchestrator:
+def build_graph(config: Optional[Dict[str, Any]] = None, db_path: str = "database/kg.sqlite") -> Orchestrator:
     """
     Build and return orchestrator instance.
     

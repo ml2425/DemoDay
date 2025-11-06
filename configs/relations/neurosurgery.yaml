@@ -1,0 +1,288 @@
+# FRACS Neurosurgery Relation Schema v1.0
+# Defines allowed medical relationships for neurosurgery domain
+# Used by LLM relation extractor to constrain outputs
+
+metadata:
+  domain: neurosurgery
+  version: "1.0"
+  description: "Relation schema for FRACS neurosurgery training MCQs"
+  author: "Clinical team"
+  created: "2025-11-07"
+  last_updated: "2025-11-07"
+
+# Core relations - highest priority for MCQ generation
+core_relations:
+  
+  TREATS:
+    description: "Therapeutic intervention for condition"
+    domain: [DRUG, PROCEDURE]
+    range: [DISORDER]
+    examples:
+      - head: "Temozolomide"
+        tail: "Glioblastoma"
+        sentence: "Standard treatment includes temozolomide for glioblastoma"
+      - head: "Craniotomy"
+        tail: "Brain Tumor"
+        sentence: "Surgical resection via craniotomy for accessible brain tumors"
+    priority: 1
+    enabled: true
+
+  DIAGNOSED_BY:
+    description: "Condition identified through test or investigation"
+    domain: [DISORDER]
+    range: [INVESTIGATION, PROCEDURE]
+    examples:
+      - head: "Glioblastoma"
+        tail: "Magnetic Resonance Imaging"
+        sentence: "Glioblastoma diagnosed by MRI with contrast enhancement"
+      - head: "Meningitis"
+        tail: "Lumbar Puncture"
+        sentence: "Bacterial meningitis confirmed by CSF analysis from LP"
+    priority: 1
+    enabled: true
+
+  HAS_SYMPTOM:
+    description: "Patient or condition presents with subjective complaint"
+    domain: [DISORDER]
+    range: [FINDING]
+    examples:
+      - head: "Brain Tumor"
+        tail: "Headache"
+        sentence: "Patients with brain tumors commonly present with headache"
+    priority: 1
+    enabled: true
+
+  HAS_SIGN:
+    description: "Objective clinical finding observable by examiner"
+    domain: [DISORDER]
+    range: [FINDING]
+    examples:
+      - head: "Increased Intracranial Pressure"
+        tail: "Papilledema"
+        sentence: "Elevated ICP manifests as papilledema on fundoscopy"
+    priority: 1
+    enabled: true
+
+  INDICATED_FOR:
+    description: "Intervention is appropriate or approved for condition"
+    domain: [DRUG, PROCEDURE]
+    range: [DISORDER, FINDING]
+    examples:
+      - head: "Decompressive Craniectomy"
+        tail: "Malignant MCA Infarction"
+        sentence: "Decompressive craniectomy indicated for malignant MCA stroke"
+    priority: 1
+    enabled: true
+
+  CONTRAINDICATES:
+    description: "Condition prohibits or cautions against intervention"
+    domain: [DISORDER, FINDING]
+    range: [DRUG, PROCEDURE]
+    examples:
+      - head: "Coagulopathy"
+        tail: "Lumbar Puncture"
+        sentence: "Uncorrected coagulopathy contraindicates lumbar puncture"
+    priority: 1
+    enabled: true
+
+  CAUSES:
+    description: "Agent or factor produces pathological condition"
+    domain: [MICROBE, DISORDER, FINDING, DRUG]
+    range: [DISORDER, FINDING]
+    examples:
+      - head: "Streptococcus pneumoniae"
+        tail: "Bacterial Meningitis"
+        sentence: "S. pneumoniae is the most common cause of bacterial meningitis"
+      - head: "Trauma"
+        tail: "Subdural Hematoma"
+        sentence: "Head trauma can cause acute subdural hematoma"
+    priority: 1
+    enabled: true
+
+  COMPLICATION_OF:
+    description: "Adverse outcome or sequela of disease or intervention"
+    domain: [DISORDER, FINDING]
+    range: [DISORDER, PROCEDURE, DRUG]
+    examples:
+      - head: "Seizure"
+        tail: "Craniotomy"
+        sentence: "Postoperative seizures are a complication of craniotomy"
+      - head: "Hydrocephalus"
+        tail: "Bacterial Meningitis"
+        sentence: "Communicating hydrocephalus may complicate meningitis"
+    priority: 1
+    enabled: true
+
+  PROCEDURE_FOR:
+    description: "Surgical or invasive intervention for condition"
+    domain: [PROCEDURE]
+    range: [DISORDER]
+    examples:
+      - head: "Ventriculoperitoneal Shunt"
+        tail: "Hydrocephalus"
+        sentence: "VP shunt placement for management of hydrocephalus"
+    priority: 1
+    enabled: true
+
+  SHOWS_FINDING:
+    description: "Investigation or test reveals specific finding"
+    domain: [INVESTIGATION]
+    range: [FINDING]
+    examples:
+      - head: "Magnetic Resonance Imaging"
+        tail: "Ring Enhancement"
+        sentence: "MRI demonstrated ring-enhancing lesion in right frontal lobe"
+    priority: 1
+    enabled: true
+
+# Extended relations - important but lower priority
+extended_relations:
+
+  FIRST_LINE_FOR:
+    description: "Standard initial therapy for condition"
+    domain: [DRUG, PROCEDURE]
+    range: [DISORDER]
+    examples:
+      - head: "Temozolomide"
+        tail: "Glioblastoma"
+        sentence: "TMZ with radiotherapy is first-line for newly diagnosed GBM"
+    priority: 2
+    enabled: true
+
+  CHEMOTHERAPY_FOR:
+    description: "Cytotoxic agent used to treat cancer"
+    domain: [DRUG]
+    range: [DISORDER]
+    examples:
+      - head: "Temozolomide"
+        tail: "Glioblastoma"
+        sentence: "Temozolomide chemotherapy for high-grade glioma"
+    priority: 2
+    enabled: true
+
+  RADIATION_FOR:
+    description: "Radiotherapy used to treat condition"
+    domain: [PROCEDURE]
+    range: [DISORDER]
+    examples:
+      - head: "External Beam Radiotherapy"
+        tail: "Glioblastoma"
+        sentence: "60 Gy external beam radiation for glioblastoma"
+    priority: 2
+    enabled: true
+
+  ADJUVANT_TO:
+    description: "Supplementary treatment given with primary therapy"
+    domain: [DRUG, PROCEDURE]
+    range: [DRUG, PROCEDURE]
+    examples:
+      - head: "Temozolomide"
+        tail: "Radiotherapy"
+        sentence: "Concomitant and adjuvant TMZ with radiotherapy"
+    priority: 2
+    enabled: true
+
+  MANAGES:
+    description: "Therapy controls symptom or complication"
+    domain: [DRUG, PROCEDURE]
+    range: [FINDING, DISORDER]
+    examples:
+      - head: "Dexamethasone"
+        tail: "Cerebral Edema"
+        sentence: "Dexamethasone manages vasogenic edema from brain tumors"
+    priority: 2
+    enabled: true
+
+  ANTIBIOTIC_FOR:
+    description: "Antimicrobial agent treats infection"
+    domain: [DRUG]
+    range: [DISORDER]
+    examples:
+      - head: "Vancomycin"
+        tail: "MRSA Meningitis"
+        sentence: "Vancomycin for empiric coverage of MRSA meningitis"
+    priority: 2
+    enabled: true
+
+  INDICATES:
+    description: "Finding suggests or points toward diagnosis"
+    domain: [FINDING]
+    range: [DISORDER]
+    examples:
+      - head: "Papilledema"
+        tail: "Increased Intracranial Pressure"
+        sentence: "Papilledema on exam indicates elevated ICP"
+    priority: 2
+    enabled: true
+
+  CONFIRMS:
+    description: "Test or finding establishes definitive diagnosis"
+    domain: [INVESTIGATION, PROCEDURE, FINDING]
+    range: [DISORDER]
+    examples:
+      - head: "Histopathology"
+        tail: "Glioblastoma"
+        sentence: "Histopathology confirmed WHO grade IV glioblastoma"
+    priority: 2
+    enabled: true
+
+  INCREASES_RISK_OF:
+    description: "Factor elevates probability of developing condition"
+    domain: [DRUG, PROCEDURE, FINDING, DISORDER]
+    range: [DISORDER]
+    examples:
+      - head: "Ionizing Radiation"
+        tail: "Secondary Malignancy"
+        sentence: "Prior radiation increases risk of secondary brain tumors"
+    priority: 2
+    enabled: true
+
+  FOLLOWED_BY:
+    description: "Sequential treatment stages"
+    domain: [PROCEDURE, DRUG]
+    range: [PROCEDURE, DRUG]
+    examples:
+      - head: "Surgical Resection"
+        tail: "Adjuvant Radiotherapy"
+        sentence: "Maximal safe resection followed by adjuvant chemoradiation"
+    priority: 2
+    enabled: true
+
+# Optional - can be disabled if causing extraction issues
+optional_relations:
+
+  LOCATION_OF:
+    description: "Anatomical site of pathology"
+    domain: [FINDING]
+    range: [DISORDER]
+    examples:
+      - head: "Frontal Lobe"
+        tail: "Glioblastoma"
+        sentence: "Right frontal lobe glioblastoma with mass effect"
+    priority: 3
+    enabled: false  # Enable if needed for localization questions
+
+  GRADE_OF:
+    description: "WHO tumor grading"
+    domain: [FINDING]
+    range: [DISORDER]
+    examples:
+      - head: "WHO Grade IV"
+        tail: "Glioblastoma"
+        sentence: "Histology showed WHO grade IV astrocytoma (glioblastoma)"
+    priority: 3
+    enabled: false
+
+# Validation rules
+validation:
+  require_examples: true          # Each relation must have examples
+  min_priority_for_mcq: 2         # Only use priority 1-2 for MCQ generation
+  strict_domain_range: true       # Enforce domain/range constraints
+  allow_inverse_relations: false  # Don't automatically infer inverse
+
+# Prompt configuration
+prompt_config:
+  max_relations_per_sentence: 5
+  min_confidence_threshold: 0.7
+  include_examples_in_prompt: true
+  temperature: 0

@@ -1,0 +1,44 @@
+# Base relations shared across all medical domains
+# These are merged with domain-specific schemas
+
+metadata:
+  domain: base
+  version: "1.0"
+  description: "Common medical relations applicable across specialties"
+
+common_relations:
+  
+  TREATS:
+    description: "Therapeutic intervention for condition"
+    domain: [DRUG, PROCEDURE]
+    range: [DISORDER]
+    priority: 1
+    enabled: true
+
+  DIAGNOSED_BY:
+    description: "Condition identified through test"
+    domain: [DISORDER]
+    range: [INVESTIGATION, PROCEDURE]
+    priority: 1
+    enabled: true
+
+  HAS_SYMPTOM:
+    description: "Patient presents with subjective complaint"
+    domain: [DISORDER]
+    range: [FINDING]
+    priority: 1
+    enabled: true
+
+  CAUSES:
+    description: "Agent produces condition"
+    domain: [MICROBE, DISORDER, FINDING, DRUG]
+    range: [DISORDER, FINDING]
+    priority: 1
+    enabled: true
+
+  CONTRAINDICATES:
+    description: "Condition prohibits intervention"
+    domain: [DISORDER, FINDING]
+    range: [DRUG, PROCEDURE]
+    priority: 1
+    enabled: true

@@ -25,7 +25,7 @@ def demo():
         description="VM2Q end-to-end demo (ingest → orchestrate → review/report)",
         epilog="Example: python demo_run.py --source pdf --pdf samples/Meningioma_clinical_molecular_.pdf"
     )
-    ap.add_argument("--db", default="kg.sqlite", help="SQLite database path (default: kg.sqlite)")
+    ap.add_argument("--db", default="database/kg.sqlite", help="SQLite database path (default: database/kg.sqlite)")
     ap.add_argument("--source", choices=["pdf", "pubmed"], required=True, help="Choose one ingestion source for this demo run")
     ap.add_argument("--pdf", nargs="+", help="One or more PDF paths (when --source pdf)")
     ap.add_argument("--query", help="PubMed query string (when --source pubmed)")
@@ -64,19 +64,47 @@ def demo():
     else:
         print(f"[Ingest] New doc_ids: {new_ids}")
 
-    # 3) Orchestrate each new document
+    # 3) Orchestrate each document
+    # Process ALL documents (not just new ones) to allow reprocessing with new LLM verifier
     orch = build_graph(db_path=args.db)
     for doc in docs:
-        if doc.doc_id in new_ids:
-            # Use actual PDF text if available, otherwise use demo text
-            text_to_process = doc.text if doc.text else args.demo_text
-            print(f"[Run] Orchestrating doc_id={doc.doc_id}")
-            if doc.text:
-                print(f"      Processing {len(text_to_process)} characters from PDF...")
-            else:
-                print(f"      Using demo text: '{args.demo_text}'")
-            out = orch.run_doc(doc_id=doc.doc_id, text=text_to_process)
-            print(f"      → Created: sentences={out['sentences_processed']}, triples={out['triples_created']}, mcqs={out['mcqs_created']}")
+        # For existing docs without text, we need to reprocess the PDF
+        # Check if we need to reload text from PDF
+        if not doc.text and doc.source_kind == "LOCAL_PDF":
+            # Reload text from original PDF path
+            # Find the original PDF path from args.pdf
+            if args.source == "pdf" and args.pdf:
+                # Try to find matching PDF
+                from pathlib import Path
+                from pypdf import PdfReader
+                for pdf_path in args.pdf:
+                    pdf_file = Path(pdf_path)
+                    if pdf_file.exists():
+                        # Read and parse PDF to get text
+                        try:
+                            reader = PdfReader(pdf_file)
+                            text_parts = []
+                            for page in reader.pages:
+                                page_text = page.extract_text()
+                                if page_text:
+                                    text_parts.append(page_text)
+                            full_text = "\n".join(text_parts)
+                            from pipeline.ingest import clean_text
+                            doc.text = clean_text(full_text)
+                            break
+                        except Exception as e:
+                            print(f"      [WARN] Could not reload PDF text: {e}")
+                            continue
+        
+        # Use actual document text if available, otherwise use demo text
+        text_to_process = doc.text if doc.text else args.demo_text
+        print(f"[Run] Orchestrating doc_id={doc.doc_id}")
+        if doc.text:
+            print(f"      Processing {len(text_to_process)} characters from document...")
+        else:
+            print(f"      Using demo text: '{args.demo_text}'")
+        out = orch.run_doc(doc_id=doc.doc_id, text=text_to_process)
+        print(f"      → Created: sentences={out['sentences_processed']}, triples={out['triples_created']}, mcqs={out['mcqs_created']}")
 
     # 4) Optional: Launch the review UI
     if args.ui:

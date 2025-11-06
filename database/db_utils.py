@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 
-def connect(db_path: str = "kg.sqlite") -> sqlite3.Connection:
+def connect(db_path: str = "database/kg.sqlite") -> sqlite3.Connection:
     """
     Connect to SQLite database with FK and WAL enabled.
     

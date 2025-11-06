@@ -12,7 +12,7 @@ SCHEMA = ROOT / "database" / "schema.sql"
 CFG    = ROOT / "configs" / "config.yaml"
 
 def get_db_path():
-    default = ROOT / "kg.sqlite"
+    default = ROOT / "database" / "kg.sqlite"
     if CFG.exists():
         try:
             cfg = yaml.safe_load(CFG.read_text(encoding="utf-8")) or {}

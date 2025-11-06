@@ -4,12 +4,15 @@ Maps variable medical expressions to unified canonical concepts.
 """
 
 import json
+import logging
 from typing import Dict, Any, List, Optional, Tuple
 import sqlite3
 
 from providers.llm_adapter import LLMAdapter
 from database.entity_utils import upsert_concept, insert_entity
 from utils.cache import hash_key, cache_get, cache_set
+
+logger = logging.getLogger(__name__)
 
 
 class CanonicaliserNode:
@@ -73,6 +76,11 @@ class CanonicaliserNode:
         for char_start, char_end, span_text in spans:
             # Canonicalize
             canonical = self.canonicalize(span_text, sentence)
+            
+            # CRITICAL: Skip negated entities (prevents false positives)
+            if canonical.get("semantic_category") == "NONE" or canonical.get("canonical_name") == "NEGATED":
+                logger.info(f"Skipping NEGATED entity: '{span_text}'")
+                continue  # Do NOT insert entity or concept
             
             # Upsert concept
             canonical_id = upsert_concept(

@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from database.db_utils import connect
 
 
-def open_conn(db_path: str = "kg.sqlite") -> sqlite3.Connection:
+def open_conn(db_path: str = "database/kg.sqlite") -> sqlite3.Connection:
     """
     Open database connection.
     

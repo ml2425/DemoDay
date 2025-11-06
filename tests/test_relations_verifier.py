@@ -54,11 +54,22 @@ def test_relation_extraction_and_verification(test_db):
     
     # Test relation extraction
     sentence = "Vancomycin is used to treat bacterial meningitis."
-    extractor = RelationExtractor()
+    extractor = RelationExtractor(conn=conn)  # Pass conn for caching
     candidates = extractor.candidates(sentence, entities)
     
     assert len(candidates) > 0, "Should extract at least one candidate"
-    assert ("vancomycin", "TREATS", "bacterial meningitis") in candidates
+    # Check for Dict format with correct relation
+    found = False
+    for candidate in candidates:
+        if (candidate.get("head", "").lower() == "vancomycin" and 
+            candidate.get("relation") == "TREATS" and 
+            candidate.get("tail", "").lower() == "bacterial meningitis"):
+            found = True
+            # Verify Dict has required keys
+            assert "confidence" in candidate
+            assert "evidence" in candidate
+            break
+    assert found, "Should find TREATS relation between vancomycin and bacterial meningitis"
     
     # Test verification
     verifier = RelationVerifierNode(conn)

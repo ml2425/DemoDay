@@ -5,6 +5,8 @@ Handles PDF parsing and document metadata extraction.
 
 import hashlib
 import re
+import uuid
+import shutil
 from pathlib import Path
 from typing import Dict, List, Any
 from dataclasses import dataclass
@@ -159,8 +161,9 @@ class Ingest:
                 # Check if document already exists
                 existing_doc_id = doc_exists_by_sha(conn, sha256)
                 if existing_doc_id:
-                    # Load existing document text (would need to retrieve from DB)
-                    # For now, return doc_id and sha256
+                    # Document already exists - return existing doc
+                    # Note: We don't create a new UUID-prefixed copy for duplicates
+                    # (deduplication by design - same content = same document)
                     docs.append(Doc(
                         doc_id=existing_doc_id,
                         sha256=sha256,
@@ -182,11 +185,33 @@ class Ingest:
                 full_text = "\n".join(text_parts)
                 cleaned_text = clean_text(full_text)
                 
-                # Insert new document
+                # Generate UUID for LOCAL_PDF (8 hex chars for filename, full UUID for DB)
+                full_uuid = uuid.uuid4()
+                doc_uuid = full_uuid.hex[:8]  # First 8 hex characters for filename
+                doc_uuid_full = str(full_uuid)  # Full UUID for database storage
+                
+                # Get original filename
+                original_filename = file_path.name
+                
+                # Copy file to samples/{8hex}_{original_filename}.pdf
+                samples_dir = Path("samples")
+                samples_dir.mkdir(exist_ok=True)
+                new_filename = f"{doc_uuid}_{original_filename}"
+                new_file_path = samples_dir / new_filename
+                
+                # Copy file to new location (preserve original)
+                shutil.copy2(file_path, new_file_path)
+                
+                # Store relative path for citation (e.g., "samples/{uuid}_{filename}.pdf")
+                citation_path = str(new_file_path)
+                
+                # Insert new document with full UUID in pmid and path in url
                 doc_id = insert_doc(
                     conn,
                     source_kind="LOCAL_PDF",
-                    sha256=sha256
+                    sha256=sha256,
+                    pmid=doc_uuid_full,  # Store full UUID in DB
+                    url=citation_path
                 )
                 
                 docs.append(Doc(
