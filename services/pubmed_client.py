@@ -1,122 +1,126 @@
-"""
-PubMed/NCBI E-utilities client.
-Handles esearch and efetch operations for abstracts.
-"""
+"""PubMed client using NCBI E-utilities API."""
 
 import os
+import time
 import requests
-import xml.etree.ElementTree as ET
-from typing import List, Dict, Any, Optional
-from utils.rate_limit import RateLimiter
-from utils.runtime import get_config
+from typing import List, Dict, Optional
+from pathlib import Path
+import yaml
+from dotenv import load_dotenv
+
+load_dotenv()
+
+ROOT = Path(__file__).parent.parent
 
 
-# Base URLs for NCBI E-utilities
-ESEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
-EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
-
-# Global rate limiter instance
-_rate_limiter: Optional[RateLimiter] = None
-
-
-def _get_rate_limiter() -> RateLimiter:
-    """Get or create rate limiter instance."""
-    global _rate_limiter
-    if _rate_limiter is None:
-        rate = get_config("ncbi.rate_limit_rps", 6.0)
-        _rate_limiter = RateLimiter(rate=float(rate))
-    return _rate_limiter
+def get_config() -> dict:
+    """Load config from configs/config.yaml."""
+    config_path = ROOT / "configs" / "config.yaml"
+    with open(config_path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
 
 
-def esearch(query: str, retmax: int = 100) -> List[str]:
+def search_pubmed(keywords: str, max_results: int = 5) -> List[str]:
     """
-    Search PubMed and return list of PMIDs.
+    Search PubMed using NCBI E-utilities esearch.
     
     Args:
-        query: Search query string
-        retmax: Maximum number of results to return
+        keywords: Search query string
+        max_results: Maximum number of PMIDs to return
         
     Returns:
-        List of PubMed IDs (as strings)
+        List of PMIDs (as strings)
     """
-    _get_rate_limiter().wait_if_needed()
+    config = get_config()
+    email = config.get("ncbi", {}).get("email", "")
+    api_key = os.getenv("NCBI_API_KEY") or config.get("ncbi", {}).get("api_key", "")
+    rate_limit = config.get("ncbi", {}).get("rate_limit_rps", 3)
     
-    # Get credentials from config or environment
-    email = get_config("ncbi.email") or os.getenv("NCBI_EMAIL", "")
-    api_key = get_config("ncbi.api_key") or os.getenv("NCBI_API_KEY", "")
+    base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
     
     params = {
         "db": "pubmed",
-        "term": query,
-        "retmax": retmax,
+        "term": keywords,
+        "retmax": min(max_results, 10),  # Cap at 10 per v3.2
         "retmode": "json",
-        "tool": "demoday",
-        "email": email
+        "email": email,
+        "tool": "MCQGenerator"
     }
     
     if api_key:
         params["api_key"] = api_key
     
+    # Rate limiting
+    time.sleep(1.0 / rate_limit)
+    
     try:
-        response = requests.get(ESEARCH_URL, params=params, timeout=30)
+        response = requests.get(base_url, params=params, timeout=30)
         response.raise_for_status()
         data = response.json()
         
-        # Extract PMIDs from response
         pmids = data.get("esearchresult", {}).get("idlist", [])
-        return [str(pid) for pid in pmids]
-    
+        return [str(pmid) for pmid in pmids]
     except Exception as e:
-        # Handle errors gracefully
+        print(f"[ERROR] PubMed search failed: {e}")
         return []
 
 
-def efetch_abstracts(pmids: List[str]) -> List[Dict[str, Any]]:
+def fetch_abstracts(pmids: List[str]) -> List[Dict]:
     """
-    Fetch abstracts for given PubMed IDs.
+    Fetch abstracts for given PMIDs using NCBI E-utilities efetch.
     
     Args:
-        pmids: List of PubMed IDs
+        pmids: List of PMIDs (as strings)
         
     Returns:
-        List of dictionaries with 'pmid', 'title', 'abstract' keys
+        List of dicts with keys: pmid, title, abstract, authors, doi
     """
     if not pmids:
         return []
     
-    _get_rate_limiter().wait_if_needed()
+    config = get_config()
+    email = config.get("ncbi", {}).get("email", "")
+    api_key = os.getenv("NCBI_API_KEY") or config.get("ncbi", {}).get("api_key", "")
+    rate_limit = config.get("ncbi", {}).get("rate_limit_rps", 3)
     
-    # Get credentials from config or environment
-    email = get_config("ncbi.email") or os.getenv("NCBI_EMAIL", "")
-    api_key = get_config("ncbi.api_key") or os.getenv("NCBI_API_KEY", "")
+    base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
     
     params = {
         "db": "pubmed",
         "id": ",".join(pmids),
         "retmode": "xml",
         "rettype": "abstract",
-        "tool": "demoday",
-        "email": email
+        "email": email,
+        "tool": "MCQGenerator"
     }
     
     if api_key:
         params["api_key"] = api_key
     
+    # Rate limiting
+    time.sleep(1.0 / rate_limit)
+    
     try:
-        response = requests.get(EFETCH_URL, params=params, timeout=30)
+        response = requests.get(base_url, params=params, timeout=30)
         response.raise_for_status()
         
-        # Parse XML response
-        root = ET.fromstring(response.text)
+        # Parse XML using standard library
+        import xml.etree.ElementTree as ET
         
-        # Handle namespaces
-        ns = {'': 'https://www.ncbi.nlm.nih.gov/soap/eutils/efetch_pubmed'}
+        # Remove namespace prefixes for easier parsing
+        xml_content = response.content
+        # Replace namespace declarations
+        xml_content = xml_content.replace(b'xmlns="http://www.ncbi.nlm.nih.gov"', b'')
+        xml_content = xml_content.replace(b'xmlns:pubmed="http://www.ncbi.nlm.nih.gov"', b'')
         
-        results = []
+        root = ET.fromstring(xml_content)
+        
+        articles = []
+        # Find all PubmedArticle elements (without namespace)
         for article in root.findall('.//PubmedArticle'):
             # Extract PMID
             pmid_elem = article.find('.//PMID')
-            pmid = pmid_elem.text if pmid_elem is not None else ""
+            pmid = pmid_elem.text if pmid_elem is not None else None
             
             # Extract title
             title_elem = article.find('.//ArticleTitle')
@@ -126,20 +130,72 @@ def efetch_abstracts(pmids: List[str]) -> List[Dict[str, Any]]:
             abstract_elems = article.findall('.//AbstractText')
             abstract_parts = []
             for elem in abstract_elems:
-                if elem.text:
-                    abstract_parts.append(elem.text)
+                text = elem.text if elem.text else ""
+                # Handle structured abstracts (Label attribute)
+                label = elem.get('Label', '')
+                if label:
+                    text = f"{label}: {text}"
+                abstract_parts.append(text)
             abstract = " ".join(abstract_parts)
             
-            if pmid:
-                results.append({
-                    "pmid": pmid,
+            # Extract authors
+            author_list = article.findall('.//Author')
+            authors = []
+            for author in author_list[:3]:  # Max 3 for display
+                last_name_elem = author.find('LastName')
+                first_name_elem = author.find('ForeName')
+                if last_name_elem is not None and first_name_elem is not None:
+                    last_name = last_name_elem.text or ""
+                    first_name = first_name_elem.text or ""
+                    if last_name and first_name:
+                        authors.append(f"{last_name}, {first_name[0]}.")
+            
+            author_str = ""
+            if len(authors) == 1:
+                author_str = authors[0]
+            elif len(authors) == 2:
+                author_str = f"{authors[0]} and {authors[1]}"
+            elif len(authors) > 2:
+                author_str = f"{authors[0]} et al."
+            
+            # Extract DOI
+            doi = None
+            for aid_elem in article.findall('.//ArticleId'):
+                if aid_elem.get('IdType') == 'doi':
+                    doi = aid_elem.text
+            
+            if pmid and abstract:
+                articles.append({
+                    "pmid": str(pmid),
                     "title": title,
-                    "abstract": abstract
+                    "abstract": abstract,
+                    "authors": author_str,
+                    "doi": doi
                 })
         
-        return results
-    
+        
+        return articles
     except Exception as e:
-        # Handle errors gracefully
+        print(f"[ERROR] PubMed fetch failed: {e}")
+        import traceback
+        traceback.print_exc()
         return []
+
+
+def search_and_fetch(keywords: str, max_results: int = 5) -> List[Dict]:
+    """
+    Search PubMed and fetch abstracts in one call.
+    
+    Args:
+        keywords: Search query string
+        max_results: Maximum number of results
+        
+    Returns:
+        List of article dicts with pmid, title, abstract, authors, doi
+    """
+    pmids = search_pubmed(keywords, max_results)
+    if not pmids:
+        return []
+    
+    return fetch_abstracts(pmids)
 

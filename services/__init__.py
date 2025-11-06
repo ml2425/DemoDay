@@ -1,4 +1,2 @@
-"""
-Service modules for external APIs.
-"""
+"""Services package for external API clients."""
 

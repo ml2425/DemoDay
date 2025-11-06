@@ -21,6 +21,10 @@ logs/
 
 # Test files
 quick_test.py
+test_pubmed.py
+
+# Samples / PDF uploads
+samples/
 
 # Progress tracking
 progress.txt
