@@ -2,10 +2,15 @@
 
 import gradio as gr
 import json
+import os
 from pathlib import Path
 from typing import Optional, Dict, Any
+from openai import OpenAI
+from dotenv import load_dotenv
 from pipeline.workflow import run_pipeline
 from database.db_utils import connect, get_mcqs_by_status, update_mcq_status, get_triple, get_source
+
+load_dotenv()
 
 
 def format_citation(source: dict) -> str:
@@ -99,8 +104,30 @@ def load_pending_mcqs() -> list:
 def create_review_interface():
     """Create MCQ review interface."""
     
-    def display_mcq(mcq_id: int):
+    def list_pending_mcqs():
+        """List all pending MCQ IDs."""
+        conn = connect()
+        mcqs = get_mcqs_by_status(conn, status="pending")
+        conn.close()
+        
+        if not mcqs:
+            return "No pending MCQs found. Generate some MCQs first!"
+        
+        # Format list
+        lines = [f"Found {len(mcqs)} pending MCQs:\n"]
+        for mcq in mcqs:
+            question_preview = mcq['question'][:60] + "..." if len(mcq['question']) > 60 else mcq['question']
+            lines.append(f"MCQ ID {mcq['mcq_id']}: {question_preview}")
+        
+        return "\n".join(lines)
+    
+    def display_mcq(mcq_id_str: str):
         """Display MCQ details for review."""
+        try:
+            mcq_id = int(mcq_id_str.strip())
+        except (ValueError, AttributeError):
+            return "Please enter a valid MCQ ID number", "", "", "", "", ""
+        
         conn = connect()
         
         # Get MCQ
@@ -117,7 +144,7 @@ def create_review_interface():
         conn.close()
         
         if not row:
-            return "MCQ not found", "", "", "", "", ""
+            return f"MCQ ID {mcq_id} not found. Use 'List Pending MCQs' to see available IDs.", "", "", "", "", ""
         
         mcq = dict(row)
         
@@ -184,13 +211,144 @@ def create_review_interface():
             return f"Error: {str(e)}"
     
     def improve_mcq(mcq_id_str: str, feedback: str):
-        """Request improvement for an MCQ."""
+        """Request improvement for an MCQ - regenerates based on user feedback."""
         try:
             mcq_id = int(mcq_id_str)
             conn = connect()
-            update_mcq_status(conn, mcq_id, "refining", feedback)
+            
+            # Get existing MCQ
+            cursor = conn.execute(
+                """SELECT m.*, t.head_entity, t.relation, t.tail_entity, t.evidence_snippet
+                   FROM mcqs m
+                   JOIN triples t ON m.triple_id = t.triple_id
+                   WHERE m.mcq_id = ?""",
+                (mcq_id,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                conn.close()
+                return f"Error: MCQ {mcq_id} not found"
+            
+            mcq = dict(row)
+            triple = {
+                "head_entity": mcq["head_entity"],
+                "relation": mcq["relation"],
+                "tail_entity": mcq["tail_entity"]
+            }
+            evidence_snippet = mcq["evidence_snippet"]
+            
+            # Build improved prompt with feedback
+            head = triple["head_entity"]
+            relation = triple["relation"]
+            tail = triple["tail_entity"]
+            
+            prompt = f"""Generate an IMPROVED medical MCQ from this VERIFIED relationship, incorporating user feedback.
+
+**VERIFIED Relationship (from database - DO NOT CHANGE):**
+- Head: {head}
+- Relation: {relation}
+- Tail: {tail}
+
+**Evidence Snippet:**
+"{evidence_snippet}"
+
+**User Feedback:**
+"{feedback}"
+
+**CRITICAL REQUIREMENTS:**
+1. MCQ MUST test understanding of EXACT relationship: {head} {relation} {tail} (unchanged)
+2. Incorporate user feedback to improve the question
+3. Correct answer MUST be directly supported by evidence snippet
+4. You CANNOT modify or change the relationship
+5. MCQ must be accurate, educational, and medically sound
+6. Use v3.2 format: stem_scenario (2-4 lines) + question (1 line) + 5 choices
+
+**Output JSON:**
+{{
+    "stem_scenario": "Improved clinical vignette (2-4 lines of context)",
+    "question": "Improved direct question line",
+    "choices": [
+        "Option A (correct answer - incorporate feedback)",
+        "Option B (distractor)",
+        "Option C (distractor)",
+        "Option D (distractor)",
+        "Option E (distractor)"
+    ],
+    "correct_index": 0,
+    "explanation": "2-4 sentence explanation linking back to triple",
+    "triple_used": {{
+        "head": "{head}",
+        "relation": "{relation}",
+        "tail": "{tail}"
+    }}
+}}
+
+**IMPORTANT:** The triple_used MUST match the relationship above exactly. Incorporate user feedback into the question, choices, and explanation."""
+            
+            # Call LLM to regenerate
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                conn.close()
+                return "Error: OPENAI_API_KEY not found"
+            
+            client = OpenAI(api_key=api_key)
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a medical education expert. Improve MCQs based on user feedback while maintaining the exact same underlying medical relationship."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.2,
+                max_tokens=1000
+            )
+            
+            content = response.choices[0].message.content.strip()
+            
+            # Parse JSON
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+            
+            mcq_data = json.loads(content)
+            
+            # Verify triple matches
+            triple_used = mcq_data.get("triple_used", {})
+            if (triple_used.get("head") != head or
+                triple_used.get("relation") != relation or
+                triple_used.get("tail") != tail):
+                conn.close()
+                return "Error: Triple changed during regeneration - rejected for safety"
+            
+            # Update MCQ with new content
+            choices_json = json.dumps(mcq_data["choices"])
+            triple_used_json = json.dumps(triple_used)
+            
+            conn.execute(
+                """UPDATE mcqs 
+                   SET stem_scenario = ?, question = ?, choices_json = ?, correct_index = ?,
+                       explanation = ?, triple_used_json = ?, status = 'pending',
+                       user_feedback = ?, updated_at = CURRENT_TIMESTAMP
+                   WHERE mcq_id = ?""",
+                (mcq_data["stem_scenario"], mcq_data["question"], choices_json,
+                 mcq_data["correct_index"], mcq_data["explanation"], triple_used_json,
+                 feedback, mcq_id)
+            )
+            conn.commit()
+            
+            # Log decision
+            conn.execute(
+                "INSERT INTO decisions (mcq_id, action, feedback) VALUES (?, ?, ?)",
+                (mcq_id, "improve", feedback)
+            )
+            conn.commit()
             conn.close()
-            return "Improvement requested. Regenerating MCQ..."
+            
+            return f"MCQ regenerated successfully! Reload MCQ ID {mcq_id} to see changes."
+            
         except Exception as e:
             return f"Error: {str(e)}"
     
@@ -199,7 +357,11 @@ def create_review_interface():
         
         with gr.Row():
             with gr.Column():
-                mcq_id_input = gr.Textbox(label="MCQ ID", placeholder="Enter MCQ ID")
+                # Add button to list pending MCQs
+                list_btn = gr.Button("📋 List Pending MCQs", variant="secondary")
+                mcq_list_display = gr.Textbox(label="Pending MCQs", lines=5, interactive=False)
+                
+                mcq_id_input = gr.Textbox(label="MCQ ID", placeholder="Enter MCQ ID (use list above to find IDs)")
                 load_btn = gr.Button("Load MCQ", variant="primary")
                 
                 mcq_display = gr.Markdown(label="MCQ")
@@ -216,6 +378,12 @@ def create_review_interface():
                 improve_btn = gr.Button("🔄 Request Better Question")
                 
                 status_output = gr.Textbox(label="Action Status", interactive=False)
+        
+        # List pending MCQs
+        list_btn.click(
+            list_pending_mcqs,
+            outputs=[mcq_list_display]
+        )
         
         load_btn.click(
             display_mcq,

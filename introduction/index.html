@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical AI You Can Trust</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideDown {
+            from { max-height: 0; opacity: 0; }
+            to { max-height: 500px; opacity: 1; }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        .slide-down { animation: slideDown 0.4s ease-out; }
+        .typing::after {
+            content: '|';
+            animation: pulse 1s infinite;
+        }
+        .chat-bubble {
+            max-width: 80%;
+            padding: 1rem;
+            border-radius: 1.5rem;
+            margin: 0.5rem 0;
+        }
+        .evidence-card {
+            border-left: 4px solid #3b82f6;
+            background: linear-gradient(to right, #1e293b, #0f172a);
+        }
+        .citation-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen text-gray-100">
+    
+    <!-- Hero Section -->
+    <div class="container mx-auto px-4 py-8">
+        <div class="text-center mb-8 fade-in">
+            <h1 class="text-5xl font-bold text-white mb-4">
+                Medical AI You Can Trust
+            </h1>
+        </div>
+
+        <!-- Hallucination Example -->
+        <div class="max-w-3xl mx-auto mb-16 fade-in">
+            <div class="bg-slate-800 rounded-2xl shadow-2xl p-6 border-2 border-red-900/50">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-10 h-10 bg-red-900/30 rounded-full flex items-center justify-center">
+                        <span class="text-2xl">⚠️</span>
+                    </div>
+                    <h2 class="text-2xl font-bold text-red-400">What Can Go Wrong?</h2>
+                </div>
+                
+                <!-- Chat Interface -->
+                <div class="space-y-4">
+                    <!-- User message -->
+                    <div class="flex justify-end">
+                        <div class="chat-bubble bg-blue-600 text-white">
+                            <p class="font-medium">How do I manage inflammation around a surgical suture?</p>
+                        </div>
+                    </div>
+                    
+                    <!-- AI wrong response -->
+                    <div class="flex justify-start">
+                        <div class="chat-bubble bg-slate-700 text-gray-100 border-2 border-red-500/50">
+                            <p class="mb-2">Visit your local sewing supply store for fresh sutures! <span class="text-2xl">🧵</span></p>
+                            <p class="text-sm text-gray-300">JoAnn Fabrics has a sale on silk thread this week—perfect for surgical applications!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transition -->
+        <div class="text-center mb-12 fade-in">
+            <div class="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-full shadow-2xl">
+                <p class="text-2xl font-bold">Evidence is all you need!</p>
+            </div>
+            <div class="mt-6">
+                <button onclick="document.getElementById('mcq-section').scrollIntoView({behavior: 'smooth'})" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition transform hover:scale-105">
+                    See How It Works →
+                </button>
+            </div>
+        </div>
+
+        <!-- MCQ Demo Section -->
+        <div id="mcq-section" class="max-w-4xl mx-auto mb-16">
+            <div class="text-center mb-8">
+                <h2 class="text-4xl font-bold text-white mb-2">Provenance-First MCQs</h2>
+                <p class="text-lg text-gray-300">Every answer includes exact evidence + citation</p>
+            </div>
+
+            <div class="bg-slate-800 rounded-2xl shadow-2xl p-8 border border-slate-700">
+                <!-- Question Display -->
+                <div id="question-container" class="mb-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="text-3xl">📋</span>
+                        <h3 class="text-2xl font-bold text-white">Question <span id="q-number">1</span>/3</h3>
+                    </div>
+                    <p id="question-text" class="text-xl text-gray-200 mb-6"></p>
+                    
+                    <div id="options-container" class="space-y-3"></div>
+                </div>
+
+                <!-- Show Evidence Button -->
+                <div class="text-center mb-6">
+                    <button id="show-evidence-btn" 
+                            class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg transition transform hover:scale-105 text-lg">
+                        🔍 Show Evidence & Citation
+                    </button>
+                </div>
+
+                <!-- Evidence Container (Hidden initially) -->
+                <div id="evidence-container" class="hidden slide-down"></div>
+
+                <!-- Navigation -->
+                <div class="flex justify-center gap-4 mt-8">
+                    <button id="prev-btn" 
+                            class="bg-slate-700 hover:bg-slate-600 text-gray-200 font-semibold py-3 px-6 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed border border-slate-600">
+                        ← Previous
+                    </button>
+                    <button id="next-btn" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition">
+                        Next →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- How It Works -->
+        <div class="max-w-5xl mx-auto mb-16">
+            <h2 class="text-4xl font-bold text-center text-white mb-12">How It Works</h2>
+            
+            <div class="grid md:grid-cols-4 gap-6">
+                <!-- Step 1 -->
+                <div class="bg-slate-800 rounded-xl shadow-xl p-6 text-center fade-in border border-slate-700">
+                    <div class="text-5xl mb-4">📄</div>
+                    <h3 class="font-bold text-lg mb-2 text-white">Source Documents</h3>
+                    <p class="text-sm text-gray-300">PDFs & PubMed papers with exact locations tracked</p>
+                </div>
+                
+                <!-- Step 2 -->
+                <div class="bg-slate-800 rounded-xl shadow-xl p-6 text-center fade-in border border-slate-700">
+                    <div class="text-5xl mb-4">🧠</div>
+                    <h3 class="font-bold text-lg mb-2 text-white">Extract Facts</h3>
+                    <p class="text-sm text-gray-300">NER + LLM verification with source sentences</p>
+                </div>
+                
+                <!-- Step 3 -->
+                <div class="bg-slate-800 rounded-xl shadow-xl p-6 text-center fade-in border border-slate-700">
+                    <div class="text-5xl mb-4">🔗</div>
+                    <h3 class="font-bold text-lg mb-2 text-white">Build Graph</h3>
+                    <p class="text-sm text-gray-300">Every triple links to evidence. No triple without proof</p>
+                </div>
+                
+                <!-- Step 4 -->
+                <div class="bg-slate-800 rounded-xl shadow-xl p-6 text-center fade-in border border-slate-700">
+                    <div class="text-5xl mb-4">❓</div>
+                    <h3 class="font-bold text-lg mb-2 text-white">Generate MCQ</h3>
+                    <p class="text-sm text-gray-300">Refuses output without citation</p>
+                </div>
+            </div>
+
+            <div class="mt-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white text-center shadow-2xl">
+                <p class="text-2xl font-bold mb-4">🎯 Zero Hallucinations</p>
+                <p class="text-lg">Every claim traces back to a specific sentence in a verified source</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                id: 1,
+                question: "Which medication is recommended as first-line pharmacological therapy for Type 2 Diabetes?",
+                options: [
+                    "Insulin injections",
+                    "Metformin",
+                    "Sulfonylureas",
+                    "DPP-4 inhibitors"
+                ],
+                correct: 1,
+                evidence: {
+                    sentence: "Metformin is a biguanide that is used as first-line treatment of type 2 diabetes mellitus and is effective as monotherapy and in combination with other glucose-lowering medications.",
+                    pmid: "33489086",
+                    source: "PubMed Central, 2021",
+                    authors: "Rasouli N, et al.",
+                    relationType: "TREATS",
+                    description: "Drug → Disorder relationship"
+                }
+            },
+            {
+                id: 2,
+                question: "What is the most frequent symptom in patients presenting with acute myocardial infarction?",
+                options: [
+                    "Shortness of breath",
+                    "Nausea and vomiting",
+                    "Chest pain",
+                    "Dizziness"
+                ],
+                correct: 2,
+                evidence: {
+                    sentence: "Chest pain, which is often described as chest pressure, tightness, or a squeezing sensation, is the most frequent symptom in patients presenting with acute myocardial infarction.",
+                    pmid: "25618302",
+                    source: "Current Cardiology Reports, 2015",
+                    authors: "Arora G, Bittner V",
+                    relationType: "HAS_FINDING",
+                    description: "Disorder → Finding relationship"
+                }
+            },
+            {
+                id: 3,
+                question: "Which test is widely used for monitoring glycemic control in diabetes patients?",
+                options: [
+                    "Fasting blood glucose only",
+                    "Oral glucose tolerance test",
+                    "Hemoglobin A1c (HbA1c)",
+                    "Random blood sugar"
+                ],
+                correct: 2,
+                evidence: {
+                    sentence: "HbA1c has become the gold standard for monitoring glycemic control in patients with diabetes mellitus.",
+                    pmid: "22907625",
+                    source: "PubMed, 2012",
+                    authors: "Sherwani SI, et al.",
+                    relationType: "INVESTIGATED_BY",
+                    description: "Disorder → Investigation relationship"
+                }
+            }
+        ];
+
+        let currentQ = 0;
+
+        function renderQuestion() {
+            const q = questions[currentQ];
+            document.getElementById('q-number').textContent = currentQ + 1;
+            document.getElementById('question-text').textContent = q.question;
+            
+            const optionsHTML = q.options.map((opt, idx) => `
+                <div class="p-4 rounded-lg border-2 ${idx === q.correct ? 'bg-green-900/30 border-green-500' : 'bg-slate-700/50 border-slate-600'} transition">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="radio" name="answer" value="${idx}" class="w-5 h-5" ${idx === q.correct ? 'checked' : ''}>
+                        <span class="font-medium text-lg text-gray-100">${opt}</span>
+                        ${idx === q.correct ? '<span class="ml-auto text-green-400 font-bold">✓ Correct</span>' : ''}
+                    </label>
+                </div>
+            `).join('');
+            
+            document.getElementById('options-container').innerHTML = optionsHTML;
+            
+            // Hide evidence initially
+            document.getElementById('evidence-container').classList.add('hidden');
+            document.getElementById('show-evidence-btn').classList.remove('hidden');
+            
+            // Update navigation
+            document.getElementById('prev-btn').disabled = currentQ === 0;
+            document.getElementById('next-btn').textContent = currentQ === questions.length - 1 ? 'Start Over' : 'Next →';
+        }
+
+        function showEvidence() {
+            const q = questions[currentQ];
+            const evidenceHTML = `
+                <div class="evidence-card p-6 rounded-xl mb-4 border border-blue-700">
+                    <div class="flex items-start gap-3 mb-4">
+                        <span class="text-3xl">📌</span>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-lg text-blue-300 mb-2">Source Evidence</h4>
+                            <p class="text-gray-200 italic text-lg leading-relaxed">"${q.evidence.sentence}"</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-4 mt-4">
+                        <div class="bg-slate-700 p-4 rounded-lg shadow border border-slate-600">
+                            <div class="text-sm text-gray-400 mb-1">Citation</div>
+                            <a href="https://pubmed.ncbi.nlm.nih.gov/${q.evidence.pmid}/" 
+                               target="_blank"
+                               class="citation-badge text-white px-4 py-2 rounded-full font-bold inline-block hover:shadow-lg transition">
+                                PMID: ${q.evidence.pmid}
+                            </a>
+                        </div>
+                        <div class="bg-slate-700 p-4 rounded-lg shadow border border-slate-600">
+                            <div class="text-sm text-gray-400 mb-1">Source</div>
+                            <div class="font-semibold text-gray-100">${q.evidence.source}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 p-3 bg-blue-900/30 rounded-lg border border-blue-700">
+                        <div class="text-sm font-semibold text-blue-300 mb-1">Relationship Type</div>
+                        <div class="text-blue-200">${q.evidence.relationType}: ${q.evidence.description}</div>
+                    </div>
+                </div>
+
+                <div class="bg-green-900/30 border-2 border-green-600 rounded-xl p-4 text-center">
+                    <p class="text-green-300 font-bold text-lg">✓ Verified: Answer is backed by peer-reviewed evidence</p>
+                </div>
+            `;
+            
+            const container = document.getElementById('evidence-container');
+            container.innerHTML = evidenceHTML;
+            container.classList.remove('hidden');
+            document.getElementById('show-evidence-btn').classList.add('hidden');
+        }
+
+        document.getElementById('show-evidence-btn').addEventListener('click', showEvidence);
+        
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            if (currentQ > 0) {
+                currentQ--;
+                renderQuestion();
+            }
+        });
+        
+        document.getElementById('next-btn').addEventListener('click', () => {
+            if (currentQ < questions.length - 1) {
+                currentQ++;
+                renderQuestion();
+            } else {
+                currentQ = 0;
+                renderQuestion();
+            }
+        });
+
+        // Initialize
+        renderQuestion();
+    </script>
+</body>
+</html>
